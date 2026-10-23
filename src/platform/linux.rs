@@ -1582,7 +1582,13 @@ pub fn get_default_pa_source() -> Option<(String, String)> {
     use pulsectl::controllers::*;
     match SourceController::create() {
         Ok(mut handler) => {
-            if let Ok(dev) = handler.get_default_device() {
+            // pulsectl's `get_default_device` looks up the default sink's name among the sources,
+            // which never matches, so look up the default source by its own name.
+            let default_source = handler
+                .get_server_info()
+                .ok()
+                .and_then(|info| info.default_source_name);
+            if let Some(Ok(dev)) = default_source.map(|name| handler.get_device_by_name(&name)) {
                 return Some((
                     dev.name.unwrap_or("".to_owned()),
                     dev.description.unwrap_or("".to_owned()),
