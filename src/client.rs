@@ -5284,7 +5284,7 @@ pub mod peer_online {
         log,
         rendezvous_proto::*,
         sleep,
-        socket_client::{connect_tcp, split_host_port},
+        socket_client::connect_tcp,
         ResultType, Stream,
     };
 
@@ -5316,11 +5316,19 @@ pub mod peer_online {
 
     // The online state service listens one port below the rendezvous server.
     // `check_port` writes an IPv6 server as `[addr]:port`, so split off the port
-    // instead of splitting at every colon.
+    // at the last colon instead of splitting at every colon.
     fn online_server(rendezvous_server: &str) -> ResultType<String> {
-        let Some((host, port)) = split_host_port(rendezvous_server) else {
+        let Some((host, port)) = rendezvous_server.rsplit_once(':') else {
             bail!("Invalid server address: {}", rendezvous_server);
         };
+        // A host that contains a colon is an IPv6 address and must be in brackets.
+        if host.contains(':') && !(host.starts_with('[') && host.ends_with(']')) {
+            bail!("Invalid server address: {}", rendezvous_server);
+        }
+        let port: u16 = port.parse()?;
+        if port == 0 {
+            bail!("Invalid server address: {}", rendezvous_server);
+        }
         Ok(format!("{}:{}", host, port - 1))
     }
 
@@ -5424,8 +5432,10 @@ pub mod peer_online {
                 online_server("[2001:db8::1]:21116").unwrap(),
                 "[2001:db8::1]:21115"
             );
+            assert_eq!(online_server("[::1]:21116").unwrap(), "[::1]:21115");
             assert!(online_server("example.com").is_err());
             assert!(online_server("example.com:0").is_err());
+            assert!(online_server("2001:db8::1:21116").is_err());
         }
     }
 }
