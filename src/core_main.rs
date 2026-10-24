@@ -769,6 +769,10 @@ fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<Strin
             }
             "--password" => {
                 if let Some(password) = args.next() {
+                    // The running instance reads the link with Uri.queryParameters, which decodes
+                    // `+`, `%XX`, `&` and `#`, so the password must be form-encoded.
+                    let password: String =
+                        url::form_urlencoded::byte_serialize(password.as_bytes()).collect();
                     param_array.push(format!("password={password}"));
                 }
             }
