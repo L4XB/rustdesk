@@ -177,6 +177,13 @@ fn resolve_lang(saved_lang: &str, locale: &str, cjk_fallback: bool) -> String {
         } else if lang == "ka" {
             lang = "ge".to_owned();
         }
+        // Android's Locale reports Hebrew and Indonesian with their legacy codes (iw_IL, in_ID)
+        // unless both the device and the app's target SDK are Android 15 or later.
+        if lang == "iw" {
+            lang = "he".to_owned();
+        } else if lang == "in" {
+            lang = "id".to_owned();
+        }
     }
     if cjk_fallback && is_cjk_lang(&lang) {
         "en".to_owned()
@@ -384,6 +391,16 @@ mod test {
         assert_eq!(f("", "kk-KZ", false), "kz");
         assert_eq!(f("", "ka_GE.UTF-8", false), "ge");
         assert_eq!(f("", "ka-GE", false), "ge");
+    }
+
+    #[test]
+    fn test_resolve_lang_detects_hebrew_and_indonesian_from_legacy_android_codes() {
+        use super::resolve_lang as f;
+
+        assert_eq!(f("", "iw_IL", false), "he");
+        assert_eq!(f("", "in_ID", false), "id");
+        assert_eq!(f("", "he-IL", false), "he");
+        assert_eq!(f("", "id-ID", false), "id");
     }
 
     #[test]
