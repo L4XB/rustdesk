@@ -911,6 +911,8 @@ pub fn is_letter_rdev_key_ex(key: &rdev::Key) -> bool {
     matches!(
         key,
         Key::LeftBracket | Key::RightBracket | Key::SemiColon | Key::Quote | Key::Comma | Key::Dot
+            // Cyrillic Ё in the Russian and Belarusian layouts.
+            | Key::BackQuote
     )
 }
 
