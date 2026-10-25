@@ -198,7 +198,6 @@ pub const KEYS_DISPLAY_SETTINGS: &[&str] = &[
     OPTION_DISABLE_CLIPBOARD,
     OPTION_LOCK_AFTER_SESSION_END,
     OPTION_PRIVACY_MODE,
-    OPTION_TOUCH_MODE,
     OPTION_I444,
     OPTION_REVERSE_MOUSE_WHEEL,
     OPTION_SWAP_LEFT_RIGHT_MOUSE,
@@ -405,5 +404,25 @@ mod tests {
              with no diagnostic: {:?}",
             both
         );
+    }
+
+    /// `read_custom_client_advanced_settings` (src/common.rs) stores a key in the
+    /// first list that holds it, so a key in two lists never reaches the second store.
+    #[test]
+    fn keys_are_routed_to_one_settings_list() {
+        let lists = [
+            ("KEYS_DISPLAY_SETTINGS", super::KEYS_DISPLAY_SETTINGS),
+            ("KEYS_LOCAL_SETTINGS", super::KEYS_LOCAL_SETTINGS),
+            ("KEYS_SETTINGS", super::KEYS_SETTINGS),
+            ("KEYS_BUILDIN_SETTINGS", super::KEYS_BUILDIN_SETTINGS),
+        ];
+        let mut seen = std::collections::HashMap::new();
+        for (name, keys) in lists {
+            for key in keys {
+                if let Some(first) = seen.insert(*key, name) {
+                    panic!("{} is in both {} and {}", key, first, name);
+                }
+            }
+        }
     }
 }
