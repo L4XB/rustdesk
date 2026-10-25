@@ -1925,9 +1925,13 @@ impl<T: InvokeUiSession> Remote<T> {
                                                         let mut overwrite_strategy =
                                                             job.default_overwrite_strategy();
                                                         let mut offset = 0;
+                                                        // offset_blk is a u32, so a download past
+                                                        // 4 GiB starts over instead of resuming.
                                                         if digest.is_identical
                                                             && job.is_resume
                                                             && digest.transferred_size > 0
+                                                            && digest.transferred_size
+                                                                <= u32::MAX as u64
                                                         {
                                                             overwrite_strategy = Some(true);
                                                             offset = digest.transferred_size as _;
