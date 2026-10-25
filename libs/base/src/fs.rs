@@ -1534,7 +1534,8 @@ pub fn is_write_need_confirmation(
         // We decide to give the decision whether to override the existing file to users,
         // which obey the behavior of the file manager in our system.
         let mut is_identical = false;
-        if remote_mt == local_mt && digest.file_size == metadata.len() {
+        // The sender only sends whole seconds (`get_current_digest`).
+        if remote_mt.as_secs() == local_mt.as_secs() && digest.file_size == metadata.len() {
             is_identical = true;
         }
         Ok(DigestCheckResult::NeedConfirm(FileTransferDigest {
@@ -1600,6 +1601,30 @@ mod tests {
             .unwrap_or_default()
             .as_nanos();
         std::env::temp_dir().join(format!("{}_{}_{}", prefix, std::process::id(), timestamp))
+    }
+
+    #[test]
+    fn is_write_need_confirmation_finds_a_file_identical_within_its_second() {
+        let dir = TestTempDir::new("rustdesk_identical_mtime");
+        std::fs::create_dir_all(&dir.path).unwrap();
+        let path = dir.join("report.pdf");
+        std::fs::write(&path, b"same content").unwrap();
+        // Local file systems keep sub-second times, the sender sends whole seconds.
+        filetime::set_file_mtime(
+            &path,
+            filetime::FileTime::from_unix_time(1_760_000_000, 500_000_000),
+        )
+        .unwrap();
+        let digest = FileTransferDigest {
+            last_modified: 1_760_000_000,
+            file_size: 12,
+            ..Default::default()
+        };
+
+        match is_write_need_confirmation(false, path.to_str().unwrap(), &digest).unwrap() {
+            DigestCheckResult::NeedConfirm(local) => assert!(local.is_identical),
+            _ => panic!("expected NeedConfirm"),
+        }
     }
 
     fn new_file_entry(name: &str) -> FileEntry {
