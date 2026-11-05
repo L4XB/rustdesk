@@ -1537,7 +1537,7 @@ pub fn remove_all_empty_dir(path: &Path) -> ResultType<()> {
             _ => {}
         }
     }
-    std::fs::remove_dir(path).ok();
+    std::fs::remove_dir(path)?;
     Ok(())
 }
 
@@ -1776,6 +1776,20 @@ mod tests {
             expected,
             err
         );
+    }
+
+    #[test]
+    fn remove_all_empty_dir_reports_a_folder_it_could_not_remove() {
+        let dir = TestTempDir::new("rustdesk_remove_all_empty_dir");
+        let folder = dir.join("folder");
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join("in-use.txt"), b"").unwrap();
+
+        assert!(remove_all_empty_dir(&folder).is_err());
+        assert!(folder.exists());
+        std::fs::remove_file(folder.join("in-use.txt")).unwrap();
+        assert!(remove_all_empty_dir(&folder).is_ok());
+        assert!(!folder.exists());
     }
 
     #[test]
