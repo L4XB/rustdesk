@@ -770,6 +770,7 @@ fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<Strin
             }
             "--password" => {
                 if let Some(password) = args.next() {
+                    let password = encode_uni_link_param(&password);
                     param_array.push(format!("password={password}"));
                 }
             }
@@ -835,6 +836,13 @@ fn core_main_invoke_new_connection(mut args: std::env::Args) -> Option<Vec<Strin
             None
         };
     }
+}
+
+// The running instance reads the link with `Uri.queryParameters`, which turns `+` into a space,
+// decodes `%XX` and ends the value at `&` or `#`.
+#[cfg(any(feature = "flutter", test))]
+fn encode_uni_link_param(value: &str) -> String {
+    url::form_urlencoded::byte_serialize(value.as_bytes()).collect()
 }
 
 #[cfg(all(target_os = "linux", feature = "flutter"))]
@@ -911,4 +919,18 @@ fn parse_silent_install_args(args: &[String]) -> (Option<bool>, bool) {
 fn is_quick_support_exe(exe: &str) -> bool {
     let exe = exe.to_lowercase();
     exe.contains("-qs-") || exe.contains("-qs.exe") || exe.contains("_qs.exe")
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_uni_link_keeps_password_with_special_characters() {
+        let password = "a+b c&d#e%41";
+        let param = encode_uni_link_param(password);
+        let link = url::Url::parse(&format!("rustdesk://connect/1?password={param}")).unwrap();
+        let (_, decoded) = link.query_pairs().next().unwrap();
+        assert_eq!(decoded, password);
+    }
 }
